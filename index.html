@@ -1,0 +1,267 @@
+<title>AEGIS-AI Shield Lab</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:wght@400;500;600;700&family=JetBrains+Mono:wght@400;600&family=Fraunces:opsz,wght@9..144,600&display=swap">
+<style>
+/* Layout: lab bench. Left rail = pipeline M1..M5, right = working pane with evidence cards. */
+:root{
+  --bg:#f3f5f8; --panel:#ffffff; --ink:#0f1b2d; --muted:#5a6678; --line:#d9dfe8;
+  --shield:#1f4fd1; --shield-soft:#e6edff; --ok:#0d8a63; --ok-soft:#e3f5ee; --warn:#b4540a; --warn-soft:#fdf0e2; --threat:#c0262d; --threat-soft:#fde8e9;
+  --display:"Fraunces", Georgia, serif; --body:"Instrument Sans", system-ui, sans-serif; --mono:"JetBrains Mono", ui-monospace, monospace;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#0c1220; --panel:#131c2e; --ink:#e7ecf5; --muted:#9aa6b8; --line:#26324a;
+  --shield:#7aa0ff; --shield-soft:#1a2747; --ok:#3fcf9b; --ok-soft:#10291f; --warn:#f0a35c; --warn-soft:#2e2010; --threat:#ff7a80; --threat-soft:#3a1519; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#0c1220; --panel:#131c2e; --ink:#e7ecf5; --muted:#9aa6b8; --line:#26324a;
+  --shield:#7aa0ff; --shield-soft:#1a2747; --ok:#3fcf9b; --ok-soft:#10291f; --warn:#f0a35c; --warn-soft:#2e2010; --threat:#ff7a80; --threat-soft:#3a1519; color-scheme:dark}
+*{box-sizing:border-box}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:15px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:20px 40px}
+.wrap{max-width:1180px;margin:0 auto;display:grid;gap:18px}
+header{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:end;justify-content:space-between;border-bottom:1px solid var(--line);padding-bottom:14px}
+h1{font-family:var(--display);font-size:clamp(26px,4vw,36px);margin:0;letter-spacing:-.01em;text-wrap:balance}
+.sub{color:var(--muted);max-width:62ch;margin:4px 0 0}
+.note{font-size:12.5px;color:var(--warn);background:var(--warn-soft);border:1px solid color-mix(in srgb,var(--warn) 35%,transparent);padding:8px 12px;border-radius:8px;max-width:60ch}
+.layout{display:grid;grid-template-columns:240px 1fr;gap:18px}
+@media (max-width:820px){.layout{grid-template-columns:1fr}}
+nav{display:grid;gap:6px;align-content:start}
+nav button{all:unset;cursor:pointer;display:grid;grid-template-columns:44px 1fr;gap:8px;align-items:center;padding:10px 12px;border-radius:10px;border:1px solid transparent}
+nav button:hover{background:var(--panel)}
+nav button:focus-visible{outline:2px solid var(--shield);outline-offset:2px}
+nav button[aria-selected="true"]{background:var(--panel);border-color:var(--line)}
+nav .code{font-family:var(--mono);font-weight:600;font-size:13px;color:var(--shield)}
+nav .lbl{font-weight:600;font-size:14px}
+nav .lbl small{display:block;font-weight:400;color:var(--muted);font-size:12px}
+.pane{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:20px;display:grid;gap:16px;min-width:0}
+.pane h2{margin:0;font-size:20px}
+.row{display:flex;flex-wrap:wrap;gap:10px;align-items:center}
+.btn{font:600 14px var(--body);border:1px solid var(--shield);background:var(--shield);color:#fff;padding:9px 14px;border-radius:9px;cursor:pointer}
+.btn.ghost{background:transparent;color:var(--shield)}
+.btn:focus-visible{outline:2px solid var(--ink);outline-offset:2px}
+label.file{font:600 14px var(--body);border:1px dashed var(--shield);color:var(--shield);padding:9px 14px;border-radius:9px;cursor:pointer}
+label.file input{display:none}
+.imgs{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+@media (max-width:560px){.imgs{grid-template-columns:1fr}}
+figure{margin:0;display:grid;gap:6px;min-width:0}
+canvas{width:100%;height:auto;border-radius:8px;border:1px solid var(--line);background:var(--bg)}
+figcaption{font-size:12.5px;color:var(--muted)}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px}
+.stat{border:1px solid var(--line);border-radius:10px;padding:10px 12px;min-width:0}
+.stat b{display:block;font-family:var(--mono);font-size:16px;font-variant-numeric:tabular-nums;overflow-wrap:anywhere}
+.stat span{font-size:12px;color:var(--muted);text-transform:uppercase;letter-spacing:.05em}
+pre{font:12px/1.5 var(--mono);background:var(--bg);border:1px solid var(--line);border-radius:10px;padding:12px;overflow-x:auto;margin:0;white-space:pre}
+.pill{display:inline-block;font:600 12px var(--mono);padding:3px 9px;border-radius:999px}
+.pill.ok{background:var(--ok-soft);color:var(--ok)} .pill.bad{background:var(--threat-soft);color:var(--threat)} .pill.mid{background:var(--warn-soft);color:var(--warn)}
+table{border-collapse:collapse;width:100%;font-size:13.5px}
+td,th{border-bottom:1px solid var(--line);padding:8px;text-align:left;vertical-align:top}
+th{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--muted)}
+.tbl{overflow-x:auto}
+.check{display:grid;gap:8px}
+.check label{display:flex;gap:10px;align-items:flex-start;padding:8px 10px;border:1px solid var(--line);border-radius:9px}
+.check input{margin-top:4px}
+.muted{color:var(--muted);font-size:13px}
+.bar{height:10px;border-radius:999px;background:var(--bg);border:1px solid var(--line);overflow:hidden}
+.bar i{display:block;height:100%;background:var(--ok)}
+footer{color:var(--muted);font-size:12px}
+@media (prefers-reduced-motion:no-preference){.bar i{transition:width .4s}}
+</style>
+
+<div class="wrap">
+<header>
+  <div>
+    <h1>AEGIS-AI Shield Lab</h1>
+    <p class="sub">Working proof of concept for the five AEGIS-AI modules. Everything runs inside this browser tab: no photo is uploaded anywhere, and the registry lives only in this tab's memory.</p>
+  </div>
+  <p class="note">Demonstration build. M1 here applies a bounded perturbation with the real 8/255 budget and measures it; the production M1 replaces this with an encoder-targeted PGD attack (Salman et al., 2023). Sample images are generated shapes, not real people.</p>
+</header>
+
+<div class="layout">
+<nav role="tablist" aria-label="AEGIS-AI modules">
+  <button role="tab" id="t1" aria-selected="true" data-p="p1"><span class="code">M1·M2</span><span class="lbl">Cloak and register<small>Shield a photo before posting</small></span></button>
+  <button role="tab" id="t3" aria-selected="false" data-p="p3"><span class="code">M3</span><span class="lbl">Verify a suspect file<small>Match a circulating image</small></span></button>
+  <button role="tab" id="t4" aria-selected="false" data-p="p4"><span class="code">M4·M5</span><span class="lbl">Takedown and clinic<small>Case file for Satgas PPKPT</small></span></button>
+  <button role="tab" id="t0" aria-selected="false" data-p="p0"><span class="code">REG</span><span class="lbl">Provenance registry<small>Hashes only, never images</small></span></button>
+</nav>
+
+<main>
+<section class="pane" id="p1" role="tabpanel" aria-labelledby="t1">
+  <h2>Cloak and register a photo</h2>
+  <div class="row">
+    <label class="file">Choose your photo<input type="file" id="f1" accept="image/*"></label>
+    <button class="btn ghost" id="sample">Load sample portrait</button>
+    <label class="muted" for="owner">Owner pseudonym</label>
+    <input id="owner" value="student-UNS-0427" style="font:13px var(--mono);padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);min-width:0;max-width:200px">
+    <button class="btn" id="cloak">Cloak and register</button>
+  </div>
+  <div class="imgs">
+    <figure><canvas id="cOrig"></canvas><figcaption>Original (stays on device)</figcaption></figure>
+    <figure><canvas id="cCloak"></canvas><figcaption>Cloaked copy for posting</figcaption></figure>
+    <figure><canvas id="cDiff"></canvas><figcaption>Perturbation, amplified ×16 to be visible</figcaption></figure>
+  </div>
+  <div class="stats" id="stats1"></div>
+  <div><p class="muted" style="margin:0 0 6px">M2 provenance manifest (C2PA-style claim, signed with a device key generated in this tab)</p><pre id="manifest">Run "Cloak and register" to produce the manifest.</pre></div>
+  <div class="row"><button class="btn ghost" id="copyMan">Copy manifest</button><span class="muted" id="copyMsg"></span></div>
+</section>
+
+<section class="pane" id="p3" role="tabpanel" aria-labelledby="t3" hidden>
+  <h2>Verify a suspect file</h2>
+  <p class="muted" style="margin:0">Load an image found online. M3 computes its perceptual hash and compares it to every registered original. A near match with a different exact hash means the file is a modified derivative of a registered photo.</p>
+  <div class="row">
+    <label class="file">Choose suspect file<input type="file" id="f3" accept="image/*"></label>
+    <button class="btn" id="simulate">Simulate a manipulated copy</button>
+  </div>
+  <div class="imgs">
+    <figure><canvas id="cSus"></canvas><figcaption>Suspect file</figcaption></figure>
+    <figure><canvas id="cRef"></canvas><figcaption>Closest registered original</figcaption></figure>
+    <figure style="align-content:start"><div id="verdict" class="stat"><span>Verdict</span><b>Waiting for a file</b></div></figure>
+  </div>
+  <div class="stats" id="stats3"></div>
+  <pre id="report">The verification report appears here.</pre>
+</section>
+
+<section class="pane" id="p4" role="tabpanel" aria-labelledby="t4" hidden>
+  <h2>Takedown and peer clinic case file</h2>
+  <p class="muted" style="margin:0">Generated from the latest M3 report. Each step needs the survivor's consent; nothing is sent automatically.</p>
+  <div class="stats" id="stats4"></div>
+  <div class="check" id="steps"></div>
+  <div><p class="muted" style="margin:0 0 6px">Progress</p><div class="bar"><i id="prog" style="width:0%"></i></div></div>
+  <pre id="dossier">Run a verification first.</pre>
+  <div class="row"><button class="btn ghost" id="copyDos">Copy case file</button><span class="muted" id="copyMsg2"></span></div>
+</section>
+
+<section class="pane" id="p0" role="tabpanel" aria-labelledby="t0" hidden>
+  <h2>Provenance registry</h2>
+  <p class="muted" style="margin:0">What the campus ledger would store. No pixels are kept: only hashes (one exact hash plus ten crop-tolerant perceptual hashes of the whole image and the face zone), a timestamp and the signature. The thumbnails on the verify tab exist only for this demonstration.</p>
+  <div class="tbl"><table><thead><tr><th>#</th><th>Owner</th><th>Registered</th><th>SHA-256 (cloaked)</th><th>Perceptual hash</th></tr></thead><tbody id="reg"></tbody></table></div>
+</section>
+</main>
+</div>
+<footer>AEGIS-AI proof of concept · Team Mr Niknos Congratulations Graduation, PKN STAN · ESC 2026 English Essay, Technology subtheme</footer>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const EPS=8; const MAXW=420;
+const registry=[]; let lastVerify=null; let hmacKey=null; let srcImg=null;
+let thumbs={};
+
+document.querySelectorAll('nav button').forEach(b=>b.addEventListener('click',()=>show(b.dataset.p)));
+function show(p){document.querySelectorAll('nav button').forEach(b=>b.setAttribute('aria-selected',b.dataset.p===p));
+  document.querySelectorAll('main section').forEach(s=>s.hidden=s.id!==p); if(p==='p4')renderCase();}
+
+function samplePortrait(seed=1){const c=document.createElement('canvas');c.width=360;c.height=420;const g=c.getContext('2d');
+  const bg=g.createLinearGradient(0,0,0,420);bg.addColorStop(0,'#9db7d8');bg.addColorStop(1,'#e8d9c6');g.fillStyle=bg;g.fillRect(0,0,360,420);
+  g.fillStyle='#2f2a2a';g.beginPath();g.ellipse(180,170,92,110,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#d9a98a';g.beginPath();g.ellipse(180,185,70,88,0,0,Math.PI*2);g.fill();
+  g.fillStyle='#2f2a2a';g.fillRect(120,110,120,34);
+  g.fillStyle='#1e3a6e';g.beginPath();g.moveTo(60,420);g.quadraticCurveTo(180,250,300,420);g.fill();
+  g.fillStyle='#ffffff';g.beginPath();g.moveTo(150,300);g.lineTo(180,345);g.lineTo(210,300);g.fill();
+  g.fillStyle='#3a2b26';[150,210].forEach(x=>{g.beginPath();g.ellipse(x,180,8,5,0,0,7);g.fill()});
+  g.strokeStyle='#a05a4a';g.lineWidth=4;g.beginPath();g.arc(180,225,18,0.2,Math.PI-0.2);g.stroke();
+  for(let i=0;i<500;i++){g.fillStyle=`rgba(${(i*37)%255},${(i*91)%255},${(i*53)%255},.05)`;g.fillRect((i*seed*73)%360,(i*41)%420,3,3)}
+  return c;}
+
+function drawTo(canvas,src){const s=Math.min(1,MAXW/src.width);canvas.width=Math.round(src.width*s);canvas.height=Math.round(src.height*s);
+  canvas.getContext('2d').drawImage(src,0,0,canvas.width,canvas.height);}
+
+function readFile(file,cb){const r=new FileReader();r.onload=()=>{const im=new Image();im.onload=()=>cb(im);im.src=r.result};r.readAsDataURL(file);}
+$('f1').onchange=e=>{if(e.target.files[0])readFile(e.target.files[0],im=>{srcImg=im;drawTo($('cOrig'),im);clear1()})};
+$('sample').onclick=()=>{srcImg=samplePortrait(1);drawTo($('cOrig'),srcImg);clear1()};
+function clear1(){['cCloak','cDiff'].forEach(id=>{const c=$(id);c.width=c.height=1});$('stats1').innerHTML='';$('manifest').textContent='Run "Cloak and register" to produce the manifest.'}
+
+async function sha256(bytes){const h=await crypto.subtle.digest('SHA-256',bytes);return [...new Uint8Array(h)].map(b=>b.toString(16).padStart(2,'0')).join('')}
+const CROPS=[0,.03,.06,.09,.12];
+function dhashSet(canvas){return [...CROPS.map(c=>dhash(canvas,c)),...CROPS.map(c=>dhash(canvas,c,.6))]}
+function dhash(canvas,c=0,top=1){const N=32,t=document.createElement('canvas');t.width=N;t.height=N;const g=t.getContext('2d');
+  const cx=canvas.width*c,cy=canvas.height*c;g.drawImage(canvas,cx,cy,canvas.width-2*cx,(canvas.height-2*cy)*top,0,0,N,N);
+  const d=g.getImageData(0,0,N,N).data;const v=[];for(let i=0;i<N*N;i++)v.push(.299*d[i*4]+.587*d[i*4+1]+.114*d[i*4+2]);
+  const co=[];for(let u=0;u<8;u++)for(let w=0;w<8;w++){let sum=0;for(let y=0;y<N;y++)for(let x=0;x<N;x++)
+    sum+=v[y*N+x]*Math.cos((2*x+1)*w*Math.PI/(2*N))*Math.cos((2*y+1)*u*Math.PI/(2*N));co.push(sum)}
+  const ac=co.slice(1);const med=[...ac].sort((a,b)=>a-b)[31];let bits='';co.forEach(x=>bits+=x>med?'1':'0');
+  let hex='';for(let k=0;k<64;k+=4)hex+=parseInt(bits.slice(k,k+4),2).toString(16);return {bits,hex}}
+function hamming(a,b){let n=0;for(let i=0;i<64;i++)if(a[i]!==b[i])n++;return n}
+function rng(seed){let s=seed>>>0;return()=>{s^=s<<13;s^=s>>>17;s^=s<<5;return((s>>>0)/4294967296)}}
+
+$('cloak').onclick=async()=>{
+  if(!srcImg){srcImg=samplePortrait(1);drawTo($('cOrig'),srcImg)}
+  const o=$('cOrig'),W=o.width,H=o.height,od=o.getContext('2d').getImageData(0,0,W,H);
+  const cc=$('cCloak');cc.width=W;cc.height=H;const out=new ImageData(W,H);const diff=new ImageData(W,H);
+  const r=rng(Date.now()); const L=new Float32Array(W*H);
+  for(let i=0;i<W*H;i++)L[i]=.299*od.data[i*4]+.587*od.data[i*4+1]+.114*od.data[i*4+2];
+  let linf=0,mse=0;
+  for(let y=0;y<H;y++)for(let x=0;x<W;x++){const p=y*W+x;
+    const gx=(L[p+1]||L[p])-(L[p-1]||L[p]), gy=(L[p+W]||L[p])-(L[p-W]||L[p]);
+    const s=((gx+gy)>=0?1:-1)*(r()<.5?1:-1);
+    for(let ch=0;ch<3;ch++){const k=p*4+ch;const v=od.data[k];const nv=Math.max(0,Math.min(255,v+s*EPS*(ch===1?1:(r()<.85?1:-1))));
+      out.data[k]=nv;const dv=nv-v;linf=Math.max(linf,Math.abs(dv));mse+=dv*dv;diff.data[k]=128+dv*16}
+    out.data[p*4+3]=255;diff.data[p*4+3]=255}
+  cc.getContext('2d').putImageData(out,0,0);const dc=$('cDiff');dc.width=W;dc.height=H;dc.getContext('2d').putImageData(diff,0,0);
+  mse/=W*H*3;const psnr=10*Math.log10(255*255/mse);
+  const shaO=await sha256(od.data.buffer.slice(0)),shaC=await sha256(out.data.buffer.slice(0));const ph=dhash(cc);
+  if(!hmacKey)hmacKey=await crypto.subtle.generateKey({name:'HMAC',hash:'SHA-256'},false,['sign']);
+  const claim={claim_generator:'AEGIS-AI PoC 0.1',owner:$('owner').value||'anonymous',created:new Date().toISOString(),
+    assertions:{'aegis.cloak':{method:'bounded L-inf perturbation (demo)',epsilon:'8/255',measured_linf:`${linf}/255`,psnr_db:+psnr.toFixed(2)},
+    'aegis.hash':{original_sha256:shaO,cloaked_sha256:shaC,perceptual_phash64:ph.hex},'aegis.storage':'hashes only; pixels never leave device'}};
+  const sig=await crypto.subtle.sign('HMAC',hmacKey,new TextEncoder().encode(JSON.stringify(claim)));
+  claim.signature='hmac-sha256:'+[...new Uint8Array(sig)].map(b=>b.toString(16).padStart(2,'0')).join('').slice(0,48)+'…';
+  $('manifest').textContent=JSON.stringify(claim,null,2);
+  const id=registry.length+1;registry.push({id,owner:claim.owner,time:claim.created,sha:shaC,shaO,ph});
+  const t=document.createElement('canvas');drawTo(t,cc);thumbs[id]=t;registry[registry.length-1].phs=dhashSet(cc);renderReg();
+  $('stats1').innerHTML=stat('L-inf distance',`${linf}/255`)+stat('PSNR',psnr.toFixed(1)+' dB')+stat('Perceptual hash',ph.hex)+stat('Registry ID','AEG-'+String(id).padStart(4,'0'));
+};
+function stat(k,v){return `<div class="stat"><span>${k}</span><b>${v}</b></div>`}
+function renderReg(){$('reg').innerHTML=registry.length?registry.map(e=>`<tr><td>${e.id}</td><td>${esc(e.owner)}</td><td style="font-family:var(--mono);font-size:12px">${e.time.replace('T',' ').slice(0,19)}</td><td style="font-family:var(--mono);font-size:12px">${e.sha.slice(0,24)}…</td><td style="font-family:var(--mono);font-size:12px">${e.ph.hex}</td></tr>`).join(''):'<tr><td colspan="5" class="muted">Nothing registered yet. Cloak a photo in M1·M2 to add the first entry.</td></tr>'}
+function esc(s){return s.replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]))}
+
+async function verify(canvas){
+  if(!registry.length){$('verdict').innerHTML='<span>Verdict</span><b>No registered photo yet</b>';return}
+  const ph=dhash(canvas),phTop=dhash(canvas,0,.6);const g=canvas.getContext('2d').getImageData(0,0,canvas.width,canvas.height);const sha=await sha256(g.data.buffer.slice(0));
+  let best=null;registry.forEach(e=>e.phs.forEach((h,k)=>{const d=hamming((k<CROPS.length?ph:phTop).bits,h.bits);if(!best||d<best.d)best={e,d,crop:CROPS[k%CROPS.length],zone:k<CROPS.length?'whole image':'face zone (upper 60%)'}}));
+  const sim=Math.round((1-best.d/64)*100);const exact=sha===best.e.sha;
+  let cls,txt;if(exact){cls='ok';txt='Identical to registered original'}else if(best.d<=12){cls='bad';txt='Modified derivative of a registered photo'}else{cls='mid';txt='No reliable match'}
+  $('verdict').innerHTML=`<span>Verdict</span><b><span class="pill ${cls}">${txt}</span></b>`;
+  drawTo($('cRef'),thumbs[best.e.id]);
+  $('stats3').innerHTML=stat('Hamming distance',`${best.d} of 64 bits`)+stat('Perceptual similarity',sim+'%')+stat('Exact hash match',exact?'yes':'no')+stat('Matched record','AEG-'+String(best.e.id).padStart(4,'0'))+stat('Matched on',best.zone+', crop '+Math.round(best.crop*100)+'%');
+  lastVerify={time:new Date().toISOString(),caseId:'CASE-'+Date.now().toString(36).toUpperCase(),record:best.e,d:best.d,sim,exact,sha,ph:ph.hex,txt};
+  $('report').textContent=JSON.stringify({report:'AEGIS-AI M3 verification',case_id:lastVerify.caseId,checked_at:lastVerify.time,
+    suspect_sha256:sha,suspect_phash64:ph.hex,matched_record:'AEG-'+String(best.e.id).padStart(4,'0'),registered_at:best.e.time,
+    registered_cloaked_sha256:best.e.sha,hamming_bits:best.d,matched_zone:best.zone,crop_alignment:best.crop,finding:txt,
+    meaning:best.d<=12&&!exact?'The suspect file derives from a photo registered before it circulated; the registered original predates the manipulation.':'See finding.',
+    limitation:'Perceptual matching shows derivation, not who made the edit. Human review by Satgas PPKPT is required.'},null,2);
+}
+$('f3').onchange=e=>{if(e.target.files[0])readFile(e.target.files[0],im=>{drawTo($('cSus'),im);verify($('cSus'))})};
+$('simulate').onclick=async()=>{
+  if(!registry.length){await $('cloak').onclick()}
+  const src=thumbs[registry[registry.length-1].id];const c=$('cSus');c.width=src.width;c.height=src.height;const g=c.getContext('2d');
+  const cx=src.width*.06,cy=src.height*.06;g.drawImage(src,cx,cy,src.width-2*cx,src.height-2*cy,0,0,c.width,c.height);
+  g.filter='brightness(1.08) saturate(0.9)';g.drawImage(c,0,0);g.filter='none';
+  g.fillStyle='rgba(205,150,125,.85)';g.beginPath();g.ellipse(c.width*.5,c.height*.86,c.width*.28,c.height*.12,0,0,7);g.fill();
+  const im=new Image();im.onload=()=>{g.drawImage(im,0,0);verify(c)};im.src=c.toDataURL('image/jpeg',0.6);
+};
+
+const STEPS=[['consent','Survivor consents to each action below (recorded by the peer clinician)'],
+ ['psych','Psychological first aid offered; referral to campus counselling or a service partner'],
+ ['stopncii','Survivor creates the StopNCII hash on her own device; partner platforms block matches'],
+ ['komdigi','Report filed to Komdigi content-complaint channel (aduankonten.id) with M3 report attached'],
+ ['platform','In-app reports filed on each platform where the file was seen'],
+ ['satgas','Case file handed to Satgas PPKPT under Permendikbudristek 55/2024'],
+ ['evidence','Evidence preserved for police: M2 manifest + M3 report + screenshots with URL and time (UU ITE Art. 5)']];
+const done={};
+function renderCase(){
+  const v=lastVerify;
+  $('stats4').innerHTML=v?stat('Case ID',v.caseId)+stat('Opened',v.time.replace('T',' ').slice(0,16))+stat('Finding',v.txt)+stat('Target','request filed < 24 h'):stat('Case ID','none yet')+stat('Next step','Verify a suspect file in M3');
+  $('steps').innerHTML=STEPS.map(([k,t])=>`<label><input type="checkbox" id="s-${k}" ${done[k]?'checked':''}><span>${t}</span></label>`).join('');
+  STEPS.forEach(([k])=>$('s-'+k).onchange=e=>{done[k]=e.target.checked;upd()});upd();
+}
+function upd(){const n=STEPS.filter(([k])=>done[k]).length;$('prog').style.width=(n/STEPS.length*100)+'%';
+  const v=lastVerify;$('dossier').textContent=v?[`AEGIS-AI CASE FILE ${v.caseId}`,`Opened: ${v.time}`,`Finding: ${v.txt} (Hamming ${v.d}/64, similarity ${v.sim}%)`,
+  `Registered original: AEG-${String(v.record.id).padStart(4,'0')} at ${v.record.time}`,`Suspect SHA-256: ${v.sha}`,'',
+  'Actions:',...STEPS.map(([k,t])=>`[${done[k]?'x':' '}] ${t}`),'',`Completed ${n} of ${STEPS.length} steps.`].join('\n'):'Run a verification first.'}
+async function copy(txt,msg){try{await navigator.clipboard.writeText(txt);$(msg).textContent='Copied.'}catch(e){$(msg).textContent='Copy is blocked here; select the text above instead.'}}
+$('copyMan').onclick=()=>copy($('manifest').textContent,'copyMsg');
+$('copyDos').onclick=()=>copy($('dossier').textContent,'copyMsg2');
+
+// open in a working state: sample registered and a simulated circulating copy verified
+(async()=>{srcImg=samplePortrait(1);drawTo($('cOrig'),srcImg);await $('cloak').onclick();await $('simulate').onclick();renderReg()})();
+</script>
